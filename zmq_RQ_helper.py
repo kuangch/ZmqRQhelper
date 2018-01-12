@@ -36,27 +36,27 @@ class ZmqRQInstance(object):
     __POLL_INTERVAL = 300
 
     # socket to talk to server
-    __socket = None
+    __ctx = zmq.Context()
     print("init RQ socket instance")
 
     def zmq_request(self, msg_type, msg_content, timeout=__DEFAULT_REQUEST_TIMEOUT):
 
         #  new socket to talk to server
-        self.__socket = zmq.Context().socket(zmq.REQ)
-        self.__socket.connect("tcp://localhost:" + ZMQPort.RQ)
+        socket = self.__ctx.socket(zmq.REQ)
+        socket.connect("tcp://localhost:" + ZMQPort.RQ)
 
         # init poller and register to socket that web can poll socket to check is it has messages
         poller = zmq.Poller()
-        poller.register(self.__socket, zmq.POLLIN)
+        poller.register(socket, zmq.POLLIN)
 
-        send_flatbuf_msg(self.__socket, msg_type, msg_content)
+        send_flatbuf_msg(socket, msg_type, msg_content)
 
         reqs = 0
 
         while reqs * self.__POLL_INTERVAL <= timeout:
             socks = dict(poller.poll(self.__POLL_INTERVAL))
-            if self.__socket in socks and socks[self.__socket] == zmq.POLLIN:
-                msg = self.__socket.recv()
+            if socket in socks and socks[socket] == zmq.POLLIN:
+                msg = socket.recv()
                 msgObj = TransMsg.GetRootAsTransMsg(msg, 0)
                 return msgObj.Content()
             reqs = reqs + 1
